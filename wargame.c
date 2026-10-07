@@ -23,7 +23,8 @@ Pion **listePlateau;
 void f_affiche_plateau(Pion *plateau);
 int f_convert_char2int(char c);
 char f_convert_int2char(int i);
-
+int f_max(Pion *plateau, int joueur, int profondeur);
+int f_min(Pion *plateau, int joueur, int profondeur);
 
 
 int f_convert_char2int(char c)
@@ -439,16 +440,76 @@ Pion* f_raz_plateau()
 }
 
 //Fonction min trouve le minimum des noeuds fils
-void f_min(Pion *plateau, int joueur, int profondeur)
+int f_min(Pion *plateau, int joueur, int profondeur)
+{
+	if (profondeur >= PROFONDEUR_MAX) return f_eval(plateau, joueur);
+
+	int min = INFINI;
+	int valeur;
+	
+	for (int l1 = 0; l1 < NB_LIGNES; l1++)
+	{
+		for (int c1 = 0; c1 < NB_COLONNES; c1++)
 		{
-		    
+			if (plateau[l1 * NB_COLONNES + c1].couleur == joueur)
+			{
+				for (int i = -1; i <= 1; i++)
+				{
+					for (int j = -1; j <= 1; j++)
+					{
+						if (!f_test_mouvement(plateau, l1, c1, l1+i, c1+j, joueur))
+						{
+							Pion plateauCopie[NB_LIGNES*NB_COLONNES];
+							f_copie_plateau(plateau, plateauCopie);
+							f_bouge_piece(plateauCopie, l1, c1, l1+i, c1+j, joueur);
+
+							valeur = f_max(plateauCopie, -joueur, profondeur+1);
+							min = valeur < min ? valeur : min;
+						}
+					}
+				}
+			}
 		}
+	}
+
+	return min;
+}
 
 //Fonction max trouve le maximum des noeuds fils
-void f_max(Pion *plateauDeJeu, int joueur, int profondeur)
-		{
+int f_max(Pion *plateau, int joueur, int profondeur)
+{
+	if (profondeur >= PROFONDEUR_MAX) return f_eval(plateau, joueur);
 
+	int max = -INFINI;
+	int valeur;
+	
+	for (int l1 = 0; l1 < NB_LIGNES; l1++)
+	{
+		for (int c1 = 0; c1 < NB_COLONNES; c1++)
+		{
+			if (plateau[l1 * NB_COLONNES + c1].couleur == joueur)
+			{
+				for (int i = -1; i <= 1; i++)
+				{
+					for (int j = -1; j <= 1; j++)
+					{
+						if (!f_test_mouvement(plateau, l1, c1, l1+i, c1+j, joueur))
+						{
+							Pion plateauCopie[NB_LIGNES*NB_COLONNES];
+							f_copie_plateau(plateau, plateauCopie);
+							f_bouge_piece(plateauCopie, l1, c1, l1+i, c1+j, joueur);
+							
+							valeur = f_min(plateauCopie, -joueur, profondeur+1);
+							max = valeur > max ? valeur : max;
+						}
+					}
+				}
+			}
 		}
+	}
+
+	return max;
+}
 
 /**
  * Calcule et joue le meilleur cout
@@ -515,6 +576,9 @@ int main(int argv, char *argc[])
 	scanf("%d",&mode);
 
 	plateauDeJeu = f_init_plateau();
+	
+	/* printf("%d",f_max(plateauDeJeu, joueur, 0)); */
+	
 	while (!fin)
 	{
 		f_affiche_plateau(plateauDeJeu);
