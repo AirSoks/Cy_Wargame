@@ -23,8 +23,8 @@ Pion **listePlateau;
 void f_affiche_plateau(Pion *plateau);
 int f_convert_char2int(char c);
 char f_convert_int2char(int i);
-int f_max(Pion *plateau, int joueur, int profondeur);
-int f_min(Pion *plateau, int joueur, int profondeur);
+int f_max(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, int *c2);
+int f_min(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, int *c2);
 
 
 int f_convert_char2int(char c)
@@ -305,7 +305,7 @@ int f_test_mouvement(Pion *plateau, int l1, int c1, int l2, int c2, int couleur)
 	/* Erreur, tentative de tir fratricide */
 	if(plateau[l2*NB_COLONNES+c2].couleur == plateau[l1*NB_COLONNES+c1].couleur)                                                return 1;
 
-	if(l1-l2 >1 || l2-l1 >1 || c1-c2 >1 || c2-c1 >1 || (l1==l2 && c1==c2))                                                	return 1;
+	if(l1-l2 >1 || l2-l1 >1 || c1-c2 >1 || c2-c1 >1 || (l1==l2 && c1==c2))                                            	    	return 1;
 #ifdef DEBUG
 	printf("dbg: exiting %s %d\n", __FUNCTION__, __LINE__);
 #endif
@@ -440,31 +440,41 @@ Pion* f_raz_plateau()
 }
 
 //Fonction min trouve le minimum des noeuds fils
-int f_min(Pion *plateau, int joueur, int profondeur)
+int f_min(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, int *c2)
 {
 	if (profondeur >= PROFONDEUR_MAX) return f_eval(plateau, joueur);
 
 	int min = INFINI;
 	int valeur;
 	
-	for (int l1 = 0; l1 < NB_LIGNES; l1++)
+	for (int l = 0; l < NB_LIGNES; l++)
 	{
-		for (int c1 = 0; c1 < NB_COLONNES; c1++)
+		for (int c = 0; c < NB_COLONNES; c++)
 		{
-			if (plateau[l1 * NB_COLONNES + c1].couleur == joueur)
+			if (plateau[l * NB_COLONNES + c].couleur == joueur)
 			{
 				for (int i = -1; i <= 1; i++)
 				{
 					for (int j = -1; j <= 1; j++)
 					{
-						if (!f_test_mouvement(plateau, l1, c1, l1+i, c1+j, joueur))
+						if (!f_test_mouvement(plateau, l, c, l+i, c+j, joueur))
 						{
 							Pion plateauCopie[NB_LIGNES*NB_COLONNES];
 							f_copie_plateau(plateau, plateauCopie);
-							f_bouge_piece(plateauCopie, l1, c1, l1+i, c1+j, joueur);
+							f_bouge_piece(plateauCopie, l, c, l+i, c+j, joueur);
 
-							valeur = f_max(plateauCopie, -joueur, profondeur+1);
-							min = valeur < min ? valeur : min;
+							valeur = f_max(plateauCopie, -joueur, profondeur+1, NULL, NULL, NULL, NULL);
+							if (valeur < min) 
+							{
+								min = valeur;
+								if (profondeur == 0)
+								{
+									*l1 = l;
+									*c1 = c;
+									*l2 = l+i;
+									*c2 = c+j;
+								}
+							}
 						}
 					}
 				}
@@ -476,31 +486,41 @@ int f_min(Pion *plateau, int joueur, int profondeur)
 }
 
 //Fonction max trouve le maximum des noeuds fils
-int f_max(Pion *plateau, int joueur, int profondeur)
+int f_max(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, int *c2)
 {
 	if (profondeur >= PROFONDEUR_MAX) return f_eval(plateau, joueur);
 
 	int max = -INFINI;
 	int valeur;
 	
-	for (int l1 = 0; l1 < NB_LIGNES; l1++)
+	for (int l = 0; l < NB_LIGNES; l++)
 	{
-		for (int c1 = 0; c1 < NB_COLONNES; c1++)
+		for (int c = 0; c < NB_COLONNES; c++)
 		{
-			if (plateau[l1 * NB_COLONNES + c1].couleur == joueur)
+			if (plateau[l * NB_COLONNES + c].couleur == joueur)
 			{
 				for (int i = -1; i <= 1; i++)
 				{
 					for (int j = -1; j <= 1; j++)
 					{
-						if (!f_test_mouvement(plateau, l1, c1, l1+i, c1+j, joueur))
+						if (!f_test_mouvement(plateau, l, c, l+i, c+j, joueur))
 						{
 							Pion plateauCopie[NB_LIGNES*NB_COLONNES];
 							f_copie_plateau(plateau, plateauCopie);
-							f_bouge_piece(plateauCopie, l1, c1, l1+i, c1+j, joueur);
+							f_bouge_piece(plateauCopie, l, c, l+i, c+j, joueur);
 							
-							valeur = f_min(plateauCopie, -joueur, profondeur+1);
-							max = valeur > max ? valeur : max;
+							valeur = f_min(plateauCopie, -joueur, profondeur+1, NULL, NULL, NULL, NULL);
+							if (valeur > max) 
+							{
+								max = valeur;
+								if (profondeur == 0)
+								{
+									*l1 = l;
+									*c1 = c;
+									*l2 = l+i;
+									*c2 = c+j;
+								}
+							}
 						}
 					}
 				}
@@ -519,7 +539,13 @@ void f_IA(int joueur)
 #ifdef DEBUG
 	printf("dbg: entering %s %d\n", __FUNCTION__, __LINE__);
 #endif
+	int l1, c1, l2, c2;
 
+	joueur == 1 ? f_min(plateauDeJeu, joueur, 0, &l1, &c1, &l2, &c2) : f_max(plateauDeJeu, joueur, 0, &l1, &c1, &l2, &c2);
+
+	f_bouge_piece(plateauDeJeu, l1, c1, l2, c2, joueur);
+
+	printf("Pièce en %c, %i vers %c, %i", f_convert_int2char(c1), l1, f_convert_int2char(c2), l2);
 #ifdef DEBUG
 	printf("dbg: exiting %s %d\n", __FUNCTION__, __LINE__);
 #endif
