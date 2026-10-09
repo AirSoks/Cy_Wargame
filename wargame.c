@@ -214,7 +214,7 @@ void f_affiche_plateau(Pion *plateau)
 }
 
 
-int f_gagnant()
+int f_gagnant(Pion *plateau)
 {
 	int i, j, somme1=0, somme2=0;
 
@@ -226,8 +226,8 @@ int f_gagnant()
 	/*Teste si quelqu'un est-il arrive sur la ligne de l'autre */
 	for(i=0; i<NB_COLONNES; i++)
 	{
-		if(plateauDeJeu[i].couleur == 1)                               return  1;
-		if(plateauDeJeu[(NB_LIGNES-1)*NB_COLONNES+i].couleur == -1)    return -1;
+		if(plateau[i].couleur == 1)                               return  1;
+		if(plateau[(NB_LIGNES-1)*NB_COLONNES+i].couleur == -1)    return -1;
 	}
 
 	//taille des armees
@@ -235,8 +235,8 @@ int f_gagnant()
 	{
 		for(j=0; j<NB_COLONNES; j++)
 		{
-			if(plateauDeJeu[i*NB_COLONNES+j].couleur == 1)  	somme1++;
-			if(plateauDeJeu[i*NB_COLONNES+j].couleur == -1)  	somme2++;
+			if(plateau[i*NB_COLONNES+j].couleur == 1)  	somme1++;
+			if(plateau[i*NB_COLONNES+j].couleur == -1)  	somme2++;
 		}
 	}
 	if(somme1==0)  return -1;
@@ -254,7 +254,7 @@ int f_gagnant()
  * 	pour laquelle la bataille a lieu
  * Renvoie le couleur du gagnant
  * */
-int f_bataille(int l, int c)
+int f_bataille(Pion *plateau, int l, int c)
 {
 	int i, j, mini, maxi, minj, maxj;
 	int somme=0;
@@ -271,10 +271,10 @@ int f_bataille(int l, int c)
 	{
 		for(j=minj; j<=maxj; j++)
 		{
-			somme += plateauDeJeu[i*NB_COLONNES+j].couleur*plateauDeJeu[i*NB_COLONNES+j].valeur;
+			somme += plateau[i*NB_COLONNES+j].couleur*plateau[i*NB_COLONNES+j].valeur;
 		}
 	}
-	somme -= plateauDeJeu[l*NB_COLONNES+c].couleur*plateauDeJeu[l*NB_COLONNES+c].valeur;
+	somme -= plateau[l*NB_COLONNES+c].couleur*plateau[l*NB_COLONNES+c].valeur;
 
 #ifdef DEBUG
 	printf("dbg: exiting %s %d\n", __FUNCTION__, __LINE__);
@@ -282,7 +282,7 @@ int f_bataille(int l, int c)
 	if(somme < 0)	return -1;
 	if(somme > 0)	return 1;
 
-	return plateauDeJeu[l*NB_COLONNES+c].couleur;
+	return plateau[l*NB_COLONNES+c].couleur;
 }
 
 
@@ -343,7 +343,7 @@ int f_bouge_piece(Pion *plateau, int l1, int c1, int l2, int c2, int couleur)
 	}
 	else
 	{
-		gagnant=f_bataille(l2, c2);
+		gagnant=f_bataille(plateau, l2, c2);
 		/* victoire */
 		if(gagnant == couleur)
 		{
@@ -403,9 +403,9 @@ int f_valeur(Pion* jeu, int joueur)
 }
 
 //fonction d'évaluation
-int f_eval(Pion* jeu,int joueur)
+int f_eval(Pion* plateau,int joueur)
 {
-    return f_valeur(jeu, joueur) - f_valeur(jeu, -joueur);
+    return f_valeur(plateau, joueur) - f_valeur(plateau, -joueur);
 }
 
 //copie du plateau
@@ -451,19 +451,19 @@ int f_min(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, 
 	{
 		for (int c = 0; c < NB_COLONNES; c++)
 		{
-			if (plateau[l * NB_COLONNES + c].couleur == joueur)
+			if (plateau[l * NB_COLONNES + c].couleur == -joueur)
 			{
 				for (int i = -1; i <= 1; i++)
 				{
 					for (int j = -1; j <= 1; j++)
 					{
-						if (!f_test_mouvement(plateau, l, c, l+i, c+j, joueur))
+						if (!f_test_mouvement(plateau, l, c, l+i, c+j, -joueur))
 						{
 							Pion plateauCopie[NB_LIGNES*NB_COLONNES];
 							f_copie_plateau(plateau, plateauCopie);
-							f_bouge_piece(plateauCopie, l, c, l+i, c+j, joueur);
+							f_bouge_piece(plateauCopie, l, c, l+i, c+j, -joueur);
 
-							valeur = f_max(plateauCopie, -joueur, profondeur+1, NULL, NULL, NULL, NULL);
+							valeur = f_max(plateauCopie, joueur, profondeur+1, NULL, NULL, NULL, NULL);
 							if (valeur < min) 
 							{
 								min = valeur;
@@ -509,7 +509,7 @@ int f_max(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, 
 							f_copie_plateau(plateau, plateauCopie);
 							f_bouge_piece(plateauCopie, l, c, l+i, c+j, joueur);
 							
-							valeur = f_min(plateauCopie, -joueur, profondeur+1, NULL, NULL, NULL, NULL);
+							valeur = f_min(plateauCopie, joueur, profondeur+1, NULL, NULL, NULL, NULL);
 							if (valeur > max) 
 							{
 								max = valeur;
@@ -541,11 +541,11 @@ void f_IA(int joueur)
 #endif
 	int l1, c1, l2, c2;
 
-	joueur == 1 ? f_min(plateauDeJeu, joueur, 0, &l1, &c1, &l2, &c2) : f_max(plateauDeJeu, joueur, 0, &l1, &c1, &l2, &c2);
+	f_max(plateauDeJeu, joueur, 0, &l1, &c1, &l2, &c2);
 
 	f_bouge_piece(plateauDeJeu, l1, c1, l2, c2, joueur);
 
-	printf("Pièce en %c, %i vers %c, %i", f_convert_int2char(c1), l1, f_convert_int2char(c2), l2);
+	printf("Pièce en %c%i vers %c%i", f_convert_int2char(c1), l1, f_convert_int2char(c2), l2);
 #ifdef DEBUG
 	printf("dbg: exiting %s %d\n", __FUNCTION__, __LINE__);
 #endif
@@ -624,7 +624,7 @@ int main(int argv, char *argc[])
 			f_IA(joueur);
 		}
 
-		if ((ret = f_gagnant()) != 0)
+		if ((ret = f_gagnant(plateauDeJeu)) != 0)
 		{
 			switch (ret)
 			{
