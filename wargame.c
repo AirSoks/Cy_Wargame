@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 
 #define NB_LIGNES 10
@@ -23,8 +24,7 @@ Pion **listePlateau;
 void f_affiche_plateau(Pion *plateau);
 int f_convert_char2int(char c);
 char f_convert_int2char(int i);
-int f_max(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, int *c2);
-int f_min(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, int *c2);
+float f_max(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, int *c2);
 
 
 int f_convert_char2int(char c)
@@ -403,9 +403,13 @@ int f_valeur(Pion* jeu, int joueur)
 }
 
 //fonction d'évaluation
-int f_eval(Pion* plateau,int joueur)
+float f_eval(Pion* plateau,int joueur)
 {
-    return f_valeur(plateau, joueur) - f_valeur(plateau, -joueur);
+    int valeur_piece = f_valeur(plateau, joueur) - f_valeur(plateau, -joueur);
+    
+    float aleatoire = (float)rand()/(float)(RAND_MAX);
+    
+    return valeur_piece + aleatoire;
 }
 
 //copie du plateau
@@ -440,12 +444,12 @@ Pion* f_raz_plateau()
 }
 
 //Fonction min trouve le minimum des noeuds fils
-int f_min(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, int *c2)
+float f_min(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, int *c2)
 {
 	if (profondeur >= PROFONDEUR_MAX) return f_eval(plateau, joueur);
 
-	int min = INFINI;
-	int valeur;
+	float min = INFINI;
+	float valeur;
 	
 	for (int l = 0; l < NB_LIGNES; l++)
 	{
@@ -486,12 +490,12 @@ int f_min(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, 
 }
 
 //Fonction max trouve le maximum des noeuds fils
-int f_max(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, int *c2)
+float f_max(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, int *c2)
 {
 	if (profondeur >= PROFONDEUR_MAX) return f_eval(plateau, joueur);
 
-	int max = -INFINI;
-	int valeur;
+	float max = -INFINI;
+	float valeur;
 	
 	for (int l = 0; l < NB_LIGNES; l++)
 	{
@@ -541,11 +545,11 @@ void f_IA(int joueur)
 #endif
 	int l1, c1, l2, c2;
 
-	f_max(plateauDeJeu, joueur, 0, &l1, &c1, &l2, &c2);
+	float valeur_coup = f_max(plateauDeJeu, joueur, 0, &l1, &c1, &l2, &c2);
 
 	f_bouge_piece(plateauDeJeu, l1, c1, l2, c2, joueur);
 
-	printf("Pièce en %c%i vers %c%i", f_convert_int2char(c1), l1, f_convert_int2char(c2), l2);
+	printf("Pièce en %c%i vers %c%i - Valeur du coup estimé à %f", f_convert_int2char(c1), l1, f_convert_int2char(c2), l2, valeur_coup);
 #ifdef DEBUG
 	printf("dbg: exiting %s %d\n", __FUNCTION__, __LINE__);
 #endif
@@ -608,6 +612,7 @@ int main(int argv, char *argc[])
 	while (!fin)
 	{
 		f_affiche_plateau(plateauDeJeu);
+	    srand(time(NULL));
 		if(mode==1)
 		{
 			if(joueur>0)
@@ -649,4 +654,3 @@ int main(int argv, char *argc[])
 
 	return 0;
 }
-
