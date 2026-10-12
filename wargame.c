@@ -19,8 +19,6 @@ typedef struct pion_s
 
 Pion *plateauDeJeu;
 
-Pion **listePlateau;
-
 void f_affiche_plateau(Pion *plateau);
 int f_convert_char2int(char c);
 char f_convert_int2char(int i);
@@ -405,11 +403,13 @@ int f_valeur(Pion* jeu, int joueur)
 //fonction d'évaluation
 float f_eval(Pion* plateau,int joueur)
 {
+    int gagnant = f_gagnant(plateau)*joueur*1000;
+    
     int valeur_piece = f_valeur(plateau, joueur) - f_valeur(plateau, -joueur);
     
     float aleatoire = (float)rand()/(float)(RAND_MAX);
     
-    return valeur_piece + aleatoire;
+    return gagnant + valeur_piece + aleatoire;
 }
 
 //copie du plateau
@@ -447,6 +447,8 @@ Pion* f_raz_plateau()
 float f_min(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, int *c2)
 {
 	if (profondeur >= PROFONDEUR_MAX) return f_eval(plateau, joueur);
+	
+	if (f_gagnant(plateau) == joueur) return INFINI;
 
 	float min = INFINI;
 	float valeur;
@@ -493,6 +495,8 @@ float f_min(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2
 float f_max(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, int *c2)
 {
 	if (profondeur >= PROFONDEUR_MAX) return f_eval(plateau, joueur);
+	
+	if (f_gagnant(plateau) == joueur) return INFINI;
 
 	float max = -INFINI;
 	float valeur;
