@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 
 
 #define NB_LIGNES 10
@@ -22,7 +23,7 @@ Pion *plateauDeJeu;
 void f_affiche_plateau(Pion *plateau);
 int f_convert_char2int(char c);
 char f_convert_int2char(int i);
-float f_max(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, int *c2);
+float f_max(Pion *plateau, int joueur, int profondeur, float alpha, float beta, int *l1, int *c1, int *l2, int *c2);
 
 
 int f_convert_char2int(char c)
@@ -401,15 +402,16 @@ int f_valeur(Pion* jeu, int joueur)
 }
 
 //fonction d'évaluation
-float f_eval(Pion* plateau,int joueur)
+float f_eval(Pion* plateau, int joueur, int profondeur)
 {
-    int gagnant = f_gagnant(plateau)*joueur*1000;
+    int gagnant = f_gagnant(plateau);
+	if (gagnant != 0) return gagnant * joueur * (1000 - profondeur);
     
     int valeur_piece = f_valeur(plateau, joueur) - f_valeur(plateau, -joueur);
     
     float aleatoire = (float)rand()/(float)(RAND_MAX);
     
-    return gagnant + valeur_piece + aleatoire;
+    return valeur_piece + aleatoire;
 }
 
 //copie du plateau
@@ -444,14 +446,9 @@ Pion* f_raz_plateau()
 }
 
 //Fonction min trouve le minimum des noeuds fils
-float f_min(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, int *c2)
+float f_min(Pion *plateau, int joueur, int profondeur, float alpha, float beta)
 {
-	if (profondeur >= PROFONDEUR_MAX) return f_eval(plateau, joueur);
-	
-	if (f_gagnant(plateau) == joueur) return INFINI;
-
-	float min = INFINI;
-	float valeur;
+	if (profondeur >= PROFONDEUR_MAX || f_gagnant(plateau) != 0) return f_eval(plateau, joueur, profondeur);
 	
 	for (int l = 0; l < NB_LIGNES; l++)
 	{
@@ -469,37 +466,23 @@ float f_min(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2
 							f_copie_plateau(plateau, plateauCopie);
 							f_bouge_piece(plateauCopie, l, c, l+i, c+j, -joueur);
 
-							valeur = f_max(plateauCopie, joueur, profondeur+1, NULL, NULL, NULL, NULL);
-							if (valeur < min) 
-							{
-								min = valeur;
-								if (profondeur == 0)
-								{
-									*l1 = l;
-									*c1 = c;
-									*l2 = l+i;
-									*c2 = c+j;
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+							beta = fminf(beta, f_max(plateauCopie, joueur, profondeur+1, alpha, beta, NULL, NULL, NULL, NULL));
 
-	return min;
+                            if (beta <= alpha) return alpha;
+						}
+                    }
+                }
+            }
+        }
+    }
+
+    return beta;
 }
 
 //Fonction max trouve le maximum des noeuds fils
-float f_max(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2, int *c2)
+float f_max(Pion *plateau, int joueur, int profondeur, float alpha, float beta, int *l1, int *c1, int *l2, int *c2)
 {
-	if (profondeur >= PROFONDEUR_MAX) return f_eval(plateau, joueur);
-	
-	if (f_gagnant(plateau) == joueur) return INFINI;
-
-	float max = -INFINI;
-	float valeur;
+	if (profondeur >= PROFONDEUR_MAX || f_gagnant(plateau) == joueur) return f_eval(plateau, joueur, profondeur);
 	
 	for (int l = 0; l < NB_LIGNES; l++)
 	{
@@ -517,18 +500,18 @@ float f_max(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2
 							f_copie_plateau(plateau, plateauCopie);
 							f_bouge_piece(plateauCopie, l, c, l+i, c+j, joueur);
 							
-							valeur = f_min(plateauCopie, joueur, profondeur+1, NULL, NULL, NULL, NULL);
-							if (valeur > max) 
+							float valeur = alpha;
+							alpha = fmaxf(alpha, f_min(plateauCopie, joueur, profondeur+1, alpha, beta));
+
+                            if (alpha > valeur && profondeur == 0)
 							{
-								max = valeur;
-								if (profondeur == 0)
-								{
-									*l1 = l;
-									*c1 = c;
-									*l2 = l+i;
-									*c2 = c+j;
-								}
+								*l1 = l;
+								*c1 = c;
+								*l2 = l+i;
+								*c2 = c+j;
 							}
+
+							if (alpha >= beta) return beta;
 						}
 					}
 				}
@@ -536,7 +519,7 @@ float f_max(Pion *plateau, int joueur, int profondeur, int *l1, int *c1, int *l2
 		}
 	}
 
-	return max;
+	return alpha;
 }
 
 /**
@@ -549,7 +532,7 @@ void f_IA(int joueur)
 #endif
 	int l1, c1, l2, c2;
 
-	float valeur_coup = f_max(plateauDeJeu, joueur, 0, &l1, &c1, &l2, &c2);
+	float valeur_coup = f_max(plateauDeJeu, joueur, 0, -INFINI, INFINI, &l1, &c1, &l2, &c2);
 
 	f_bouge_piece(plateauDeJeu, l1, c1, l2, c2, joueur);
 
