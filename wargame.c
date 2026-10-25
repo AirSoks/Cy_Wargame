@@ -401,6 +401,59 @@ int f_valeur(Pion* jeu, int joueur)
 	return valeur;
 }
 
+//Calcul de la valeur d'avancement des pions du joueur
+int f_avancement(Pion *plateau, int joueur)
+{
+    int l, c;
+    int avancement = 0;
+    for (l = 0; l < NB_LIGNES; l++)
+    {
+        for (c = 0; c < NB_COLONNES; c++)
+        {
+            if (plateau[l * NB_COLONNES + c].couleur == joueur)
+			{
+				int progression = (joueur == 1) ? (NB_LIGNES - l) : (l + 1);
+				avancement += plateau[l * NB_COLONNES + c].valeur * progression;
+			}
+        }
+    }
+
+    return avancement;
+}
+
+
+//Calcul de la valeur de regroupement des pions du joueur
+int f_regroupement(Pion *plateau, int joueur)
+{
+    int l, c, i, j, mini, maxi, minj, maxj;
+    int regroupement = 0;
+
+    for (l = 0; l < NB_LIGNES; l++)
+    {
+        for (c = 0; c < NB_COLONNES; c++)
+        {
+			if (plateau[l * NB_COLONNES + c].couleur == joueur)
+			{
+				mini = l-1<0?0:l-1;
+				maxi = l+1>NB_LIGNES-1?NB_LIGNES-1:l+1;
+				minj = c-1<0?0:c-1;
+				maxj = c+1>NB_COLONNES-1?NB_COLONNES-1:c+1;
+
+				for (i = mini; i <= maxi; i++)
+				{
+					for (j = minj; j <= maxj; j++)
+					{
+						if (plateau[i * NB_COLONNES + j].couleur == joueur) regroupement += plateau[i * NB_COLONNES + j].valeur;
+					}
+				}
+				regroupement -= plateau[l * NB_COLONNES + c].valeur;
+			}
+        }
+    }
+
+    return regroupement;
+}
+
 //fonction d'évaluation
 float f_eval(Pion* plateau, int joueur, int profondeur)
 {
@@ -408,10 +461,12 @@ float f_eval(Pion* plateau, int joueur, int profondeur)
 	if (gagnant != 0) return gagnant * joueur * (1000 - profondeur);
     
     int valeur_piece = f_valeur(plateau, joueur) - f_valeur(plateau, -joueur);
+	int avancement = f_avancement(plateau, joueur) - f_avancement(plateau, -joueur);
+	int regroupement = f_regroupement(plateau, joueur)  - f_regroupement(plateau, -joueur);
     
     float aleatoire = (float)rand()/(float)(RAND_MAX);
     
-    return valeur_piece + aleatoire;
+    return valeur_piece + 0.05 * aleatoire + 0.5 * avancement + 0.1 * regroupement;
 }
 
 //copie du plateau
