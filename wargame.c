@@ -20,6 +20,9 @@ typedef struct pion_s
 
 Pion *plateauDeJeu;
 
+long nb_noeuds = 0;
+long nb_coupures = 0;
+
 void f_affiche_plateau(Pion *plateau);
 int f_convert_char2int(char c);
 char f_convert_int2char(int i);
@@ -251,7 +254,7 @@ int f_gagnant(Pion *plateau)
 /**
  * Prend comme argument la ligne et la colonne de la case
  * 	pour laquelle la bataille a lieu
- * Renvoie le couleur du gagnant
+ * Renvoie la couleur du gagnant
  * */
 int f_bataille(Pion *plateau, int l, int c)
 {
@@ -503,6 +506,7 @@ Pion* f_raz_plateau()
 //Fonction min trouve le minimum des noeuds fils
 float f_min(Pion *plateau, int joueur, int profondeur, float alpha, float beta)
 {
+	nb_noeuds++;
 	if (profondeur >= PROFONDEUR_MAX || f_gagnant(plateau) != 0) return f_eval(plateau, joueur, profondeur);
 	
 	for (int l = 0; l < NB_LIGNES; l++)
@@ -523,7 +527,7 @@ float f_min(Pion *plateau, int joueur, int profondeur, float alpha, float beta)
 
 							beta = fminf(beta, f_max(plateauCopie, joueur, profondeur+1, alpha, beta, NULL, NULL, NULL, NULL));
 
-                            if (beta <= alpha) return alpha;
+							if (beta <= alpha) { nb_coupures++; return alpha; }
 						}
                     }
                 }
@@ -537,7 +541,8 @@ float f_min(Pion *plateau, int joueur, int profondeur, float alpha, float beta)
 //Fonction max trouve le maximum des noeuds fils
 float f_max(Pion *plateau, int joueur, int profondeur, float alpha, float beta, int *l1, int *c1, int *l2, int *c2)
 {
-	if (profondeur >= PROFONDEUR_MAX || f_gagnant(plateau) == joueur) return f_eval(plateau, joueur, profondeur);
+	nb_noeuds++;
+	if (profondeur >= PROFONDEUR_MAX || f_gagnant(plateau) != 0) return f_eval(plateau, joueur, profondeur);
 	
 	for (int l = 0; l < NB_LIGNES; l++)
 	{
@@ -566,7 +571,7 @@ float f_max(Pion *plateau, int joueur, int profondeur, float alpha, float beta, 
 								*c2 = c+j;
 							}
 
-							if (alpha >= beta) return beta;
+							if (alpha >= beta) { nb_coupures++; return beta; }
 						}
 					}
 				}
@@ -586,12 +591,22 @@ void f_IA(int joueur)
 	printf("dbg: entering %s %d\n", __FUNCTION__, __LINE__);
 #endif
 	int l1, c1, l2, c2;
+	nb_noeuds = 0;
+	nb_coupures = 0;
+	clock_t debut = clock();
 
 	float valeur_coup = f_max(plateauDeJeu, joueur, 0, -INFINI, INFINI, &l1, &c1, &l2, &c2);
+	double temps = 1000.0 * (clock() - debut) / CLOCKS_PER_SEC;
 
 	f_bouge_piece(plateauDeJeu, l1, c1, l2, c2, joueur);
 
 	printf("Pièce en %c%i vers %c%i - Valeur du coup estimé à %f", f_convert_int2char(c1), l1, f_convert_int2char(c2), l2, valeur_coup);
+	FILE *f = fopen("stats.csv", "a");
+	if (f != NULL)
+	{
+		fprintf(f, "%d;%ld;%ld;%.2f\n", joueur, nb_noeuds, nb_coupures, temps);
+		fclose(f);
+	}
 #ifdef DEBUG
 	printf("dbg: exiting %s %d\n", __FUNCTION__, __LINE__);
 #endif
